@@ -5,29 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f6f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Met Vel en Gamel">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <title>Met Vel en Gamel · Aanwezigheden</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100svh;background:#f5f6f2;color:#21352b;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:22px}.page{width:min(100%,420px);text-align:center;padding:32px 24px;background:#fff;border:1px solid #e5eae5;border-radius:18px;box-shadow:0 12px 34px #2746340d}.logo{display:block;width:142px;height:142px;object-fit:contain;margin:0 auto 20px;border-radius:22px}.name{font-size:25px;line-height:1.15;margin:0 0 8px;font-weight:750;letter-spacing:-.5px}.description{margin:0 0 24px;color:#718078;font-size:14px}.open{display:block;width:100%;padding:14px 18px;border-radius:10px;background:#28775a;color:#fff;text-decoration:none;font-size:16px;font-weight:700}.open:focus-visible{outline:3px solid #97c7ab;outline-offset:3px}.small{margin:16px 0 0;color:#87938b;font-size:12px}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#f5f6f2}
+    body{font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#21352b}
+    .app-shell{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:#f5f6f2}
+    .app-frame{display:block;width:100%;height:100%;border:0;background:#f5f6f2}
+    .splash{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:24px;background:#f5f6f2;transition:opacity .25s ease,visibility .25s ease}
+    .splash.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .splash-card{width:min(100%,390px);text-align:center;padding:30px 22px;background:#fff;border:1px solid #e5eae5;border-radius:18px;box-shadow:0 12px 34px #2746340d}
+    .logo{display:block;width:124px;height:124px;object-fit:contain;margin:0 auto 18px;border-radius:22px;animation:walk .8s steps(1,end) infinite}
+    h1{font-size:24px;line-height:1.15;margin:0 0 8px;letter-spacing:-.4px}
+    p{margin:0;color:#718078;font-size:14px}
+    .retry{display:none;margin:18px auto 0;padding:12px 16px;border:0;border-radius:9px;background:#28775a;color:#fff;font:inherit;font-weight:700}
+    .retry.visible{display:block}
+    @keyframes walk{0%,100%{transform:translateX(-4px) rotate(-3deg)}25%{transform:translate(1px,-4px) rotate(4deg)}50%{transform:translateX(6px) rotate(-3deg)}75%{transform:translate(1px,-4px) rotate(4deg)}}
+    @media(prefers-reduced-motion:reduce){.logo{animation:none}}
   </style>
 </head>
 <body>
-  <main class="page">
-    <img class="logo" src="apple-touch-icon.png" alt="Logo van Met Vel en Gamel">
-    <h1 class="name">Met Vel en Gamel</h1>
-    <p class="description">Aanwezigheden en punten</p>
-    <a class="open" id="openApp" href="https://script.google.com/macros/s/AKfycbxSCKxSuO0dESs6WFLe513wc_seDUXgKycwDQva8HMddCrLztd5e5WhbCncw_5lAjU/exec">Open de aanwezigheden</a>
-    <p class="small">Tik hierboven om naar de invoerapp te gaan.</p>
+  <main class="app-shell">
+    <iframe
+      id="attendanceApp"
+      class="app-frame"
+      title="Aanwezigheden Met Vel en Gamel"
+      allow="clipboard-read; clipboard-write"
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+    <section class="splash" id="splash" aria-live="polite">
+      <div class="splash-card">
+        <img class="logo" src="apple-touch-icon.png" alt="Logo van Met Vel en Gamel">
+        <h1>Met Vel en Gamel</h1>
+        <p id="loadingText">Het trommelaartje haalt de app op…</p>
+        <button class="retry" id="retry" type="button">Opnieuw proberen</button>
+      </div>
+    </section>
   </main>
   <script>
-    const appUrl = document.getElementById('openApp').href;
-    document.getElementById('openApp').addEventListener('click', event => {
-      event.preventDefault();
-      const separator = appUrl.includes('?') ? '&' : '?';
-      window.location.href = appUrl + separator + 'v=' + Date.now();
+    const APP_URL = 'https://script.google.com/macros/s/AKfycbxSCKxSuO0dESs6WFLe513wc_seDUXgKycwDQva8HMddCrLztd5e5WhbCncw_5lAjU/exec';
+    const frame = document.getElementById('attendanceApp');
+    const splash = document.getElementById('splash');
+    const retry = document.getElementById('retry');
+    const loadingText = document.getElementById('loadingText');
+    let loadTimer;
+
+    function loadApp() {
+      clearTimeout(loadTimer);
+      splash.classList.remove('hidden');
+      retry.classList.remove('visible');
+      loadingText.textContent = 'Het trommelaartje haalt de app op…';
+      frame.src = APP_URL + '?embedded=1&v=' + Date.now();
+      loadTimer = setTimeout(() => {
+        loadingText.textContent = 'Het laden duurt langer dan verwacht.';
+        retry.classList.add('visible');
+      }, 15000);
+    }
+
+    frame.addEventListener('load', () => {
+      clearTimeout(loadTimer);
+      setTimeout(() => splash.classList.add('hidden'), 350);
     });
+    retry.addEventListener('click', loadApp);
+    window.addEventListener('pageshow', () => {
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+    });
+    loadApp();
   </script>
 </body>
 </html>
