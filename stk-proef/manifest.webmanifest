@@ -1,17 +1,17 @@
 {
   "id": "./",
-  "name": "STK Proefomgeving",
-  "short_name": "STK Proef",
+  "name": "Met Vel en Gamel",
+  "short_name": "Met Vel en Gamel",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f5fa",
-  "theme_color": "#6843a5",
+  "background_color": "#f5f7f3",
+  "theme_color": "#28775a",
   "icons": [
     {
-      "src": "icon-kleur.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "../aanwezigheden/apple-touch-icon-v2.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
