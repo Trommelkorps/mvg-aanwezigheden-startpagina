@@ -9,9 +9,9 @@
   "theme_color": "#28775a",
   "icons": [
     {
-      "src": "../stk-proef/icon-kleur.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./apple-touch-icon-v2.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
