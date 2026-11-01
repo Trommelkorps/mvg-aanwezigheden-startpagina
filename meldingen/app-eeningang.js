@@ -6,7 +6,7 @@ const nativePush=typeof PushSubscriptionOptions!=='undefined'&&Object.prototype.
 let member='',staff=false,sdk=null,supported=(!appleMobile||homeScreen)&&nativePush,servicePhase=supported?'laden':'niet-ondersteund',linking=false,linked='',linkError=false,attempt=null,manifestBlob='';
 try{member=localStorage.getItem(KEY)||'';staff=localStorage.getItem(ACCESS)==='beheer';}catch(e){}if(!validKey(member))member='';
 const incoming=new URLSearchParams(location.hash.slice(1)),incomingKey=incoming.get('lid');
-if(validKey(incomingKey)&&(!member||member===incomingKey||confirm('Deze uitnodiging hoort bij een ander lid. Wil je op dit toestel die persoonlijke app openen?'))){member=incomingKey;staff=incoming.get('toegang')==='beheer';try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(e){}}
+if(validKey(incomingKey)&&(!member||member===incomingKey||confirm('Deze uitnodiging hoort bij een ander lid. Wil je op dit toestel die persoonlijke app openen?'))){staff=incoming.get('toegang')==='beheer'||(member===incomingKey&&staff);member=incomingKey;try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(e){}}
 const requestedEvent=new URLSearchParams(location.search).get('optreden')||'';
 const profileNonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');let profileSource=null;
 function personalStart(){return SITE+(member?'#lid='+encodeURIComponent(member)+(staff?'&toegang=beheer':''):'');}
@@ -15,6 +15,13 @@ updateManifest();
 window.addEventListener('hashchange',()=>location.reload());
 function appUrl(){const event=/^[A-Za-z0-9_-]{1,80}$/.test(requestedEvent);if(staff&&!event)return APP;return member?APP+'?page=planning&member='+encodeURIComponent(member)+(event?'&event='+encodeURIComponent(requestedEvent):''):APP;}
 $('appFrame').src=appUrl();
+$('openManagement').hidden=!staff;
+function openManagement(){
+ if(!confirm('Naar de beheerschermen? Bewaar eerst eventuele wijzigingen.'))return;
+ profileSource=null;$('notifications').close();$('loadNotice').hidden=false;
+ history.replaceState(null,'',personalStart());$('appFrame').src=APP;
+}
+$('openManagement').onclick=openManagement;$('managementLogin').onclick=openManagement;
 const loadingTimer=setTimeout(()=>{if(!$('loadNotice').hidden)$('loadNotice').textContent='Het openen duurt langer. Controleer je verbinding. Blijft dit staan? Sluit de app en open het clubicoon opnieuw.';},30000);
 function openNotifications(){if(!$('notifications').open)$('notifications').showModal();render();}
 $('showNotifications').onclick=openNotifications;$('closeNotifications').onclick=()=>$('notifications').close();
@@ -31,7 +38,7 @@ window.addEventListener('message',e=>{
  }
  if(e.data.type==='stk-own-profile'&&e.source===profileSource&&e.data.nonce===profileNonce&&validKey(e.data.key)){
   const key=e.data.key;if(member&&member!==key&&!confirm('Je bent aangemeld als een ander lid. Wil je dit toestel voor dat persoonlijke profiel gebruiken?'))return;
-  const changed=member!==key||staff!==(e.data.staff===true);member=key;staff=e.data.staff===true;
+  const nextStaff=e.data.staff===true||(member===key&&staff),changed=member!==key||staff!==nextStaff;member=key;staff=nextStaff;$('openManagement').hidden=!staff;
   try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(err){}
   if(changed){linked='';linkError=false;updateManifest();history.replaceState(null,'',SITE+location.search+'#lid='+encodeURIComponent(member)+(staff?'&toegang=beheer':''));}
   render();if(!linkError)registerDevice();
