@@ -15,13 +15,13 @@ updateManifest();
 window.addEventListener('hashchange',()=>location.reload());
 function appUrl(){const event=/^[A-Za-z0-9_-]{1,80}$/.test(requestedEvent);if(staff&&!event)return APP;return member?APP+'?page=planning&member='+encodeURIComponent(member)+(event?'&event='+encodeURIComponent(requestedEvent):''):APP;}
 $('appFrame').src=appUrl();
-$('openManagement').hidden=!staff;
+if($('openManagement'))$('openManagement').hidden=!staff;
 function openManagement(){
  if(!confirm('Naar de beheerschermen? Bewaar eerst eventuele wijzigingen.'))return;
  profileSource=null;$('notifications').close();$('loadNotice').hidden=false;
  history.replaceState(null,'',personalStart());$('appFrame').src=APP;
 }
-$('openManagement').onclick=openManagement;$('managementLogin').onclick=openManagement;
+if($('openManagement'))$('openManagement').onclick=openManagement;if($('managementLogin'))$('managementLogin').onclick=openManagement;
 const loadingTimer=setTimeout(()=>{if(!$('loadNotice').hidden)$('loadNotice').textContent='Het openen duurt langer. Controleer je verbinding. Blijft dit staan? Sluit de app en open het clubicoon opnieuw.';},30000);
 function openNotifications(){if(!$('notifications').open)$('notifications').showModal();render();}
 $('showNotifications').onclick=openNotifications;$('closeNotifications').onclick=()=>$('notifications').close();
@@ -38,7 +38,7 @@ window.addEventListener('message',e=>{
  }
  if(e.data.type==='stk-own-profile'&&e.source===profileSource&&e.data.nonce===profileNonce&&validKey(e.data.key)){
   const key=e.data.key;if(member&&member!==key&&!confirm('Je bent aangemeld als een ander lid. Wil je dit toestel voor dat persoonlijke profiel gebruiken?'))return;
-  const nextStaff=e.data.staff===true||(member===key&&staff),changed=member!==key||staff!==nextStaff;member=key;staff=nextStaff;$('openManagement').hidden=!staff;
+  const nextStaff=e.data.staff===true||(member===key&&staff),changed=member!==key||staff!==nextStaff;member=key;staff=nextStaff;if($('openManagement'))$('openManagement').hidden=!staff;
   try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(err){}
   if(changed){linked='';linkError=false;updateManifest();history.replaceState(null,'',SITE+location.search+'#lid='+encodeURIComponent(member)+(staff?'&toegang=beheer':''));}
   render();if(!linkError)registerDevice();
