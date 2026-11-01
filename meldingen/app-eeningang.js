@@ -8,6 +8,7 @@ try{member=localStorage.getItem(KEY)||'';staff=localStorage.getItem(ACCESS)==='b
 const incoming=new URLSearchParams(location.hash.slice(1)),incomingKey=incoming.get('lid');
 if(validKey(incomingKey)&&(!member||member===incomingKey||confirm('Deze uitnodiging hoort bij een ander lid. Wil je op dit toestel die persoonlijke app openen?'))){member=incomingKey;staff=incoming.get('toegang')==='beheer';try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(e){}}
 const requestedEvent=new URLSearchParams(location.search).get('optreden')||'';
+const profileNonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');let profileSource=null;
 function personalStart(){return SITE+(member?'#lid='+encodeURIComponent(member)+(staff?'&toegang=beheer':''):'');}
 function updateManifest(){const manifest={id:'/mvg-aanwezigheden-startpagina/meldingen/',name:'Met Vel en Gamel',short_name:'Met Vel en Gamel',start_url:personalStart(),scope:SITE,display:'standalone',background_color:'#f5f6f0',theme_color:'#235d49',icons:[{src:'https://trommelkorps.github.io/mvg-aanwezigheden-startpagina/aanwezigheden/apple-touch-icon-v2.png?icon=20261101',sizes:'1254x1254',type:'image/png',purpose:'any'}]};if(manifestBlob)URL.revokeObjectURL(manifestBlob);manifestBlob=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'}));$('manifest').href=manifestBlob;}
 updateManifest();
@@ -21,7 +22,23 @@ function render(){const on=!!sdk?.User.PushSubscription.optedIn,id=sdk?.User.Pus
 function googleOrigin(origin){try{const u=new URL(origin);return u.protocol==='https:'&&(u.hostname==='script.google.com'||u.hostname==='script.googleusercontent.com'||u.hostname.endsWith('-script.googleusercontent.com'));}catch(e){return false;}}
 function registerDevice(){const id=sdk?.User.PushSubscription.id,on=!!sdk?.User.PushSubscription.optedIn;if(!member||!on||!validId(id)||linking||linked===member+'|'+id)return;linking=true;linkError=false;const nonce=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');const frame=document.createElement('iframe');frame.hidden=true;frame.title='Meldingen koppelen';frame.referrerPolicy='no-referrer';attempt={nonce,frame,key:member,id,timer:setTimeout(()=>finishLink(false),25000)};frame.src=APP+'?page=pushautomatisch&member='+encodeURIComponent(member)+'&subscription='+encodeURIComponent(id)+'&nonce='+nonce;document.body.append(frame);render();}
 function finishLink(ok){if(!attempt)return;const current=attempt;clearTimeout(current.timer);current.frame.remove();attempt=null;linking=false;if(ok&&member===current.key&&sdk?.User.PushSubscription.optedIn&&sdk.User.PushSubscription.id===current.id){linked=member+'|'+current.id;linkError=false;}else linkError=true;render();}
-window.addEventListener('message',e=>{if(!googleOrigin(e.origin)||!e.data||typeof e.data!=='object')return;if(e.data.type==='stk-app-ready'){clearTimeout(loadingTimer);$('loadNotice').hidden=true;e.source.postMessage({type:'stk-host-ready'},e.origin);}if(e.data.type==='stk-open-notifications')openNotifications();if(e.data.type==='stk-push-linked'&&attempt&&e.data.nonce===attempt.nonce)finishLink(e.data.ok===true);});
+window.addEventListener('message',e=>{
+ if(!googleOrigin(e.origin)||!e.data||typeof e.data!=='object')return;
+ if(e.data.type==='stk-app-ready'){
+  clearTimeout(loadingTimer);$('loadNotice').hidden=true;
+  if(!profileSource)profileSource=e.source;
+  if(e.source===profileSource)e.source.postMessage({type:'stk-host-ready',nonce:profileNonce},e.origin);
+ }
+ if(e.data.type==='stk-own-profile'&&e.source===profileSource&&e.data.nonce===profileNonce&&validKey(e.data.key)){
+  const key=e.data.key;if(member&&member!==key&&!confirm('Je bent aangemeld als een ander lid. Wil je dit toestel voor dat persoonlijke profiel gebruiken?'))return;
+  const changed=member!==key||staff!==(e.data.staff===true);member=key;staff=e.data.staff===true;
+  try{localStorage.setItem(KEY,member);localStorage.setItem(ACCESS,staff?'beheer':'lid');}catch(err){}
+  if(changed){linked='';linkError=false;updateManifest();history.replaceState(null,'',SITE+location.search+'#lid='+encodeURIComponent(member)+(staff?'&toegang=beheer':''));}
+  render();if(!linkError)registerDevice();
+ }
+ if(e.data.type==='stk-open-notifications')openNotifications();
+ if(e.data.type==='stk-push-linked'&&attempt&&e.data.nonce===attempt.nonce)finishLink(e.data.ok===true);
+});
 $('retryLink').onclick=()=>{linkError=false;registerDevice();};
 $('enable').onclick=async()=>{if(!sdk||!member)return;$('enable').disabled=true;try{await sdk.Notifications.requestPermission();if(sdk.Notifications.permission)await sdk.User.PushSubscription.optIn();registerDevice();}catch(e){$('pushStatus').textContent='Inschakelen is niet gelukt. Controleer de meldingsinstellingen van je telefoon.';return;}finally{$('enable').disabled=false;}render();};
 $('disable').onclick=async()=>{if(!sdk)return;try{await sdk.User.PushSubscription.optOut();linked='';linkError=false;render();}catch(e){$('pushStatus').textContent='Uitschakelen is niet gelukt. Probeer opnieuw of gebruik je telefooninstellingen.';}};
